@@ -69,7 +69,14 @@ const SearchResult = ({
   return (
     <div className="flex border rounded-lg overflow-hidden mb-4 bg-white">
       <div className="w-1/4 min-w-[120px] max-w-[180px] relative">
-        <img src={image} alt={title} className="w-full h-full object-cover" />
+        <img
+          src={
+            image ||
+            "https://img.freepik.com/premium-vector/default-image-icon-vector-missing-picture-page-website-design-mobile-app-no-photo-available_87543-11093.jpg"
+          }
+          alt={title}
+          className="w-full h-full object-cover"
+        />
       </div>
       <div className="p-4 flex-1">
         <div className="text-xs text-blue-600 font-medium mb-1">{type}</div>
@@ -93,9 +100,9 @@ const SearchResults = ({
     <div className="w-[600px] max-w-full px-4 mb-10">
       <h2 className="text-xl font-medium mb-4">Results</h2>
       <div>
-        {data.map((result) => (
+        {data.map((result, index) => (
           <SearchResult
-            key={result.id}
+            key={index}
             title={result.title}
             description={result.description}
             image={result.image}

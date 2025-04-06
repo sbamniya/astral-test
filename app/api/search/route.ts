@@ -53,7 +53,6 @@ export async function GET(req: NextRequest) {
 
   queue.add(async () => {
     try {
-      console.log("testing queue");
       const response = await Promise.allSettled([
         searchCK12(data.id, user.id, query, grade),
         searchKhanAcademy(data.id, user.id, query),
@@ -63,9 +62,10 @@ export async function GET(req: NextRequest) {
         .filter((res) => res.status === "fulfilled")
         .map((res) => (res as PromiseFulfilledResult<any>).value)
         .flat();
-
+      console.log("Result found. processing results");
       const filtered = await filterResultsWithGPT(allResults, query, grade);
-      await Promise.all([
+      console.log("Filtered results", filtered);
+      const [, insertRes] = await Promise.all([
         supabase
           .from("search_sessions")
           .update([
@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
           },
         ]),
       ]);
+      console.log(JSON.stringify(insertRes));
     } catch (error) {
       console.log("error");
       await supabase
