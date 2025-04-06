@@ -1,8 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import * as cheerio from "cheerio";
-import chromium from "chrome-aws-lambda";
+import { existsSync } from "fs";
 import SerpApi from "google-search-results-nodejs";
-import puppeteer from "puppeteer-core";
+import puppeteer from "puppeteer";
 import { extractResultsFromHTML } from "../openai";
 
 const search = new SerpApi.GoogleSearch(process.env.SERP_API_KEY!);
@@ -16,14 +16,20 @@ export interface SearchResult {
   type: string;
 }
 
+const possiblePaths = [
+  "/usr/bin/chromium-browser",
+  "/usr/bin/chromium",
+  "/snap/bin/chromium",
+];
+
+const getChromiumPath = () =>
+  possiblePaths.find((path) => existsSync(path)) || null;
+
 const scrapContent = async (url: string, selector: string) => {
-  const path = await chromium.executablePath;
-  console.log("Chromium path:", path);
   const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: path, // Important!
+    executablePath: getChromiumPath()!,
     headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
   console.log("Launching browser...");
   const page = await browser.newPage();
