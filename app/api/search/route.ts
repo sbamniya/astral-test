@@ -55,15 +55,25 @@ export async function GET(req: NextRequest) {
     try {
       const response = await Promise.allSettled([
         searchCK12(data.id, user.id, query, grade),
-        searchKhanAcademy(data.id, user.id, query),
         searchGooglePDFs(data.id, user.id, query, grade),
       ]);
+      //
+      const khanAcademyResult = await searchKhanAcademy(
+        data.id,
+        user.id,
+        query
+      );
       const allResults = response
         .filter((res) => res.status === "fulfilled")
         .map((res) => (res as PromiseFulfilledResult<any>).value)
         .flat();
+
       console.log("Result found. processing results");
-      const filtered = await filterResultsWithGPT(allResults, query, grade);
+      const filtered = await filterResultsWithGPT(
+        [...allResults, ...khanAcademyResult],
+        query,
+        grade
+      );
       console.log("Filtered results", filtered);
       const [, insertRes] = await Promise.all([
         supabase
