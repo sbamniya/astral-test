@@ -32,7 +32,7 @@ ${JSON.stringify(results.slice(0, 10))}
 
   const res = await openai.chat.completions.create({
     messages: [{ role: "user", content: prompt }],
-    model: "gpt-4-turbo",
+    model: "gpt-4o-mini",
     temperature: 0.4,
   });
 
@@ -58,7 +58,7 @@ ${html.slice(0, 15000)}
 `;
 
   const chat = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "user",
