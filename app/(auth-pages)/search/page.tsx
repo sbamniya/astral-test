@@ -1,5 +1,8 @@
-import { Search, ChevronDown } from 'lucide-react';
-import Image from 'next/image';
+"use client";
+
+import { useSearchRealtime } from "@/lib/useSearchRealtime";
+import { useSearchSSE } from "@/lib/useSearchSSE";
+import { ChevronDown, Search } from "lucide-react";
 
 // Define types for search results
 type SearchResultType = {
@@ -22,7 +25,7 @@ const searchAgentActions = [
   "Looking through PBSMedia, IXL, Khan Academy, and 4 other sites...",
   "Looking through 14 results on PBSMedia...",
   "Found 3 high quality resources on PBSMedia...",
-  "Looking..."
+  "Looking...",
 ];
 
 // Fixture data for grade options
@@ -48,29 +51,39 @@ const searchResults: SearchResultType[] = [
   {
     id: 1,
     title: "Volcanic Eruptions and Their Impact on Climate",
-    description: "Learn about how volcanic eruptions affect global climate patterns through the release of ash, gases, and aerosols into the atmosphere.",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRa0tiyaniMsAvPtpe3YLePWvpddUHDv6Qz8A&s",
-    type: "Video"
+    description:
+      "Learn about how volcanic eruptions affect global climate patterns through the release of ash, gases, and aerosols into the atmosphere.",
+    image:
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRa0tiyaniMsAvPtpe3YLePWvpddUHDv6Qz8A&s",
+    type: "Video",
   },
   {
     id: 2,
     title: "The Formation and Structure of Volcanoes",
-    description: "Discover how volcanoes form and the different types of volcanic structures found around the world, from shield volcanoes to stratovolcanoes.",
-    image: "https://www.thoughtco.com/thmb/RVHYNhzVuhQIGPETDM42VukXVsg=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/an-active-volcano-spews-out-hot-red-lava-and-smoke--140189201-5b8e85b046e0fb00500d0e23.jpg",
-    type: "Interactive Lesson"
+    description:
+      "Discover how volcanoes form and the different types of volcanic structures found around the world, from shield volcanoes to stratovolcanoes.",
+    image:
+      "https://www.thoughtco.com/thmb/RVHYNhzVuhQIGPETDM42VukXVsg=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/an-active-volcano-spews-out-hot-red-lava-and-smoke--140189201-5b8e85b046e0fb00500d0e23.jpg",
+    type: "Interactive Lesson",
   },
 ];
 
 // Individual search result component
-const SearchResult = ({ title, description, image, type }: { title: string; description: string; image: string; type: string }) => {
+const SearchResult = ({
+  title,
+  description,
+  image,
+  type,
+}: {
+  title: string;
+  description: string;
+  image: string;
+  type: string;
+}) => {
   return (
     <div className="flex border rounded-lg overflow-hidden mb-4 bg-white">
       <div className="w-1/4 min-w-[120px] max-w-[180px] relative">
-        <img 
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
+        <img src={image} alt={title} className="w-full h-full object-cover" />
       </div>
       <div className="p-4 flex-1">
         <div className="text-xs text-blue-600 font-medium mb-1">{type}</div>
@@ -102,6 +115,10 @@ const SearchResults = ({ results }: { results: SearchResultType[] }) => {
 };
 
 export default function Home() {
+  const { loading, session } = useSearchSSE("Icebergs", 5);
+  const items = useSearchRealtime(session?.id);
+  console.log({ items, loading, session });
+
   return (
     <div className="flex flex-col items-center w-[600px] max-w-full mx-auto">
       <div className="px-4 flex-1 w-full mb-2">
@@ -120,11 +137,11 @@ export default function Home() {
             <Search className="w-5 h-5" />
           </button>
         </div>
-        
+
         {/* Grade Selector - moved below search bar, aligned left, smaller */}
         <div className="flex justify-start mb-6">
           <div className="relative">
-            <select 
+            <select
               defaultValue="all"
               className="appearance-none h-8 pl-3 pr-8 bg-[#f2f2f7] rounded-md text-sm text-[#1c1c1e] border border-[#e5e5ea] focus:outline-none focus:ring-1 focus:ring-[#8e8e93]"
             >
@@ -140,21 +157,26 @@ export default function Home() {
           </div>
         </div>
       </div>
-      
+
       {/* Search agent actions area */}
       <div className="w-[600px] max-w-full px-4 mb-10">
         <div className="rounded-lg border border-[#e5e5ea] bg-white p-4 shadow-sm">
-          <h3 className="text-lg font-medium mb-3 text-[#1c1c1e]">Astral is looking for resources...</h3>
+          <h3 className="text-lg font-medium mb-3 text-[#1c1c1e]">
+            Astral is looking for resources...
+          </h3>
           <div className="space-y-2.5">
             {searchAgentActions.map((action, index) => (
-              <div key={index} className="text-[#3a3a3c] text-sm border-l-2 border-gray-200 pl-3 py-0.5">
+              <div
+                key={index}
+                className="text-[#3a3a3c] text-sm border-l-2 border-gray-200 pl-3 py-0.5"
+              >
                 {action}
               </div>
             ))}
           </div>
         </div>
       </div>
-      
+
       {/* Search results section */}
       <SearchResults results={searchResults} />
     </div>
