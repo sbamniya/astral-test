@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         searchCK12(data.id, user.id, query, grade),
         searchGooglePDFs(data.id, user.id, query, grade),
       ]);
-      //
+      // Khan Academy search is not parallelized to avoid parallel requests
       const khanAcademyResult = await searchKhanAcademy(
         data.id,
         user.id,
