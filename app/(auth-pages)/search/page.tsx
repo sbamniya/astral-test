@@ -1,17 +1,11 @@
 "use client";
 
 import { useSearchRealtime } from "@/lib/useSearchRealtime";
-import { useSearchSSE } from "@/lib/useSearchSSE";
+import { SearchResultType, useSearchResult } from "@/lib/useSearchResult";
+import { useSession } from "@/lib/useSession";
+import useUseId from "@/lib/useUseId";
 import { ChevronDown, Search } from "lucide-react";
-
-// Define types for search results
-type SearchResultType = {
-  id: number;
-  title: string;
-  description: string;
-  image: string;
-  type: string;
-};
+import { useMemo, useRef, useState } from "react";
 
 // Define type for grade options
 type GradeOptionType = {
@@ -19,14 +13,6 @@ type GradeOptionType = {
   label: string;
   value: string;
 };
-
-// Placeholder search agent actions
-const searchAgentActions = [
-  "Looking through PBSMedia, IXL, Khan Academy, and 4 other sites...",
-  "Looking through 14 results on PBSMedia...",
-  "Found 3 high quality resources on PBSMedia...",
-  "Looking...",
-];
 
 // Fixture data for grade options
 const gradeOptions: GradeOptionType[] = [
@@ -95,12 +81,19 @@ const SearchResult = ({
 };
 
 // Search results container component
-const SearchResults = ({ results }: { results: SearchResultType[] }) => {
+const SearchResults = ({
+  sessionId,
+  userId,
+}: {
+  userId: string;
+  sessionId: string;
+}) => {
+  const { data } = useSearchResult(userId, sessionId);
   return (
     <div className="w-[600px] max-w-full px-4 mb-10">
       <h2 className="text-xl font-medium mb-4">Results</h2>
       <div>
-        {results.map((result) => (
+        {data.map((result) => (
           <SearchResult
             key={result.id}
             title={result.title}
@@ -114,10 +107,54 @@ const SearchResults = ({ results }: { results: SearchResultType[] }) => {
   );
 };
 
+const ResourceList = ({
+  userId,
+  sessionId,
+}: {
+  userId: string;
+  sessionId?: string;
+}) => {
+  const items = useSearchRealtime(userId, sessionId);
+  const searchAgentActions = useMemo(() => {
+    return items.map((item) => {
+      const { payload, status } = item;
+      if (status === "started") {
+        return `Searching ${item.site}...`;
+      }
+      if (status === "completed") {
+        return `Found ${payload.length} results on ${item.site}`;
+      }
+      if (status === "failed") {
+        return `Failed to search ${item.site}`;
+      }
+      return `Looking through ${item.site}`;
+    });
+  }, [items]);
+
+  return (
+    <>
+      {searchAgentActions.map((action, index) => (
+        <div
+          key={index}
+          className="text-[#3a3a3c] text-sm border-l-2 border-gray-200 pl-3 py-0.5"
+        >
+          {action}
+        </div>
+      ))}
+    </>
+  );
+};
+
 export default function Home() {
-  const { loading, session } = useSearchSSE("Icebergs", 5);
-  const items = useSearchRealtime(session?.id);
-  console.log({ items, loading, session });
+  const userId = useUseId();
+
+  const [search, setSearch] = useState("");
+  const [selectedGrade, setSelectedGarde] = useState("all");
+  const ref = useRef<HTMLInputElement>(null);
+  const { session } = useSession(
+    search,
+    selectedGrade === "all" ? undefined : selectedGrade
+  );
 
   return (
     <div className="flex flex-col items-center w-[600px] max-w-full mx-auto">
@@ -129,10 +166,17 @@ export default function Home() {
             placeholder="Search..."
             defaultValue="Volcanoes"
             className="flex-grow h-12 pl-4 bg-transparent text-base text-[#1c1c1e] placeholder:text-[#8e8e93] focus:outline-none"
+            ref={ref}
           />
           <button
             type="submit"
             className="bg-[#1c1c1e] text-white w-12 h-12 flex items-center justify-center hover:bg-[#3a3a3c] transition duration-200"
+            onClick={() => {
+              const value = ref.current?.value ?? "";
+              if (value.length > 0) {
+                setSearch(value);
+              }
+            }}
           >
             <Search className="w-5 h-5" />
           </button>
@@ -142,8 +186,11 @@ export default function Home() {
         <div className="flex justify-start mb-6">
           <div className="relative">
             <select
-              defaultValue="all"
+              value={selectedGrade}
               className="appearance-none h-8 pl-3 pr-8 bg-[#f2f2f7] rounded-md text-sm text-[#1c1c1e] border border-[#e5e5ea] focus:outline-none focus:ring-1 focus:ring-[#8e8e93]"
+              onChange={(e) => {
+                setSelectedGarde(e.target.value);
+              }}
             >
               {gradeOptions.map((grade) => (
                 <option key={grade.id} value={grade.value}>
@@ -165,20 +212,15 @@ export default function Home() {
             Astral is looking for resources...
           </h3>
           <div className="space-y-2.5">
-            {searchAgentActions.map((action, index) => (
-              <div
-                key={index}
-                className="text-[#3a3a3c] text-sm border-l-2 border-gray-200 pl-3 py-0.5"
-              >
-                {action}
-              </div>
-            ))}
+            {userId && <ResourceList sessionId={session?.id} userId={userId} />}
           </div>
         </div>
       </div>
 
       {/* Search results section */}
-      <SearchResults results={searchResults} />
+      {userId && session?.id && (
+        <SearchResults userId={userId} sessionId={session?.id} />
+      )}
     </div>
   );
 }

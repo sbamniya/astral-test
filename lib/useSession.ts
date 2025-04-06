@@ -1,18 +1,20 @@
-import { SearchResult } from "@/lib/sites/fetchAll";
+import { isServer } from "@/utils/utils";
 import { useEffect, useState } from "react";
 
-export function useSearchSSE(query: string, grade: number) {
-  const [session, setSession] = useState<{ id: string } | null>(null);
+export function useSession(query: string, grade?: string) {
+  const sessionId = isServer() ? null : localStorage.getItem("sessionId");
+  const [session, setSession] = useState<{ id: string } | null>(
+    sessionId ? { id: sessionId } : null
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!query) return;
-    console.log(localStorage.getItem("sessionId"));
     const fetchResults = async () => {
       setLoading(true);
       try {
         const response = await fetch(
-          `/api/search?query=${encodeURIComponent(query)}&grade=${grade}`
+          `/api/search?query=${encodeURIComponent(query)}&grade=${grade ?? ""}`
         );
         if (!response.ok) {
           throw new Error("Network response was not ok");

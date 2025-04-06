@@ -14,3 +14,6 @@ export function encodedRedirect(
 ) {
   return redirect(`${path}?${type}=${encodeURIComponent(message)}`);
 }
+
+
+export const isServer = () => typeof window === "undefined";

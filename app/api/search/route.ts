@@ -1,8 +1,8 @@
 import { filterResultsWithGPT } from "@/lib/openai";
 import {
-    searchCK12,
-    searchGooglePDFs,
-    searchKhanAcademy,
+  searchCK12,
+  searchGooglePDFs,
+  searchKhanAcademy,
 } from "@/lib/sites/fetchAll";
 import { createClient } from "@/utils/supabase/server";
 import { NextRequest } from "next/server";
@@ -52,22 +52,48 @@ export async function GET(req: NextRequest) {
   }
 
   queue.add(async () => {
-    console.log("testing queue");
-    const response = await Promise.allSettled([
-      searchCK12(data.id, user.id, query, grade),
-      searchKhanAcademy(data.id, user.id, query),
-    //   searchGooglePDFs(data.id, query, grade),
-    ]);
-    const allResults = response
-      .filter((res) => res.status === "fulfilled")
-      .map((res) => (res as PromiseFulfilledResult<any>).value)
-      .flat()
-      .filter((res) => res.length > 0);
+    try {
+      console.log("testing queue");
+      const response = await Promise.allSettled([
+        searchCK12(data.id, user.id, query, grade),
+        searchKhanAcademy(data.id, user.id, query),
+        searchGooglePDFs(data.id, user.id, query, grade),
+      ]);
+      const allResults = response
+        .filter((res) => res.status === "fulfilled")
+        .map((res) => (res as PromiseFulfilledResult<any>).value)
+        .flat()
+        .filter((res) => res.length > 0);
 
-    console.log(allResults);
+      console.log(allResults);
 
-    const filtered = await filterResultsWithGPT(allResults, query, grade);
-    console.log(filtered);
+      const filtered = await filterResultsWithGPT(allResults, query, grade);
+      await Promise.all([
+        supabase
+          .from("search_sessions")
+          .update([
+            {
+              status: "completed",
+            },
+          ])
+          .eq("id", data.id),
+        supabase.from("search_results").insert([
+          {
+            session_id: data.id,
+            payload: filtered,
+          },
+        ]),
+      ]);
+    } catch (error) {
+      await supabase
+        .from("search_sessions")
+        .update([
+          {
+            status: "failed",
+          },
+        ])
+        .eq("id", data.id);
+    }
   });
 
   return new Response(JSON.stringify(data), {

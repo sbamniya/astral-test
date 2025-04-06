@@ -49,21 +49,17 @@ export async function searchCK12(
   query: string,
   grade: number
 ): Promise<SearchResult[]> {
+  const supabase = await createClient();
   try {
-    const supabase = await createClient();
-    const searchEvent = await supabase
-      .from("search_events")
-      .insert([
-        {
-          session_id: sessionId,
-          user_id: userId,
-          site: "CK12",
-          status: "started",
-          payload: {},
-        },
-      ])
-      .select()
-      .single();
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "CK12",
+        status: "started",
+        payload: {},
+      },
+    ]);
     const searchParams = new URLSearchParams();
     searchParams.set("referrer", "search");
     searchParams.set("pageNum", "1");
@@ -77,17 +73,28 @@ export async function searchCK12(
       '[class^="ContentList__ListContainer"]'
     );
     const data = await extractResultsFromHTML(htmlContent, query);
-    await supabase
-      .from("search_events")
-      .update({
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "CK12",
         status: "completed",
         payload: data,
-      })
-      .eq("id", searchEvent.data?.id);
+      },
+    ]);
 
     return data;
   } catch (error) {
     console.error("Error fetching CK12 search results:", error);
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "CK12",
+        status: "failed",
+        payload: {},
+      },
+    ]);
   }
 
   return [];
@@ -107,21 +114,17 @@ export async function searchKhanAcademy(
     type: string;
     subject?: string;
   }[] = [];
+  const supabase = await createClient();
   try {
-    const supabase = await createClient();
-    const searchEvent = await supabase
-      .from("search_events")
-      .insert([
-        {
-          session_id: sessionId,
-          user_id: userId,
-          site: "khan_academy",
-          status: "started",
-          payload: {},
-        },
-      ])
-      .select()
-      .single();
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "khan_academy",
+        status: "started",
+        payload: {},
+      },
+    ]);
     const searchParams = new URLSearchParams();
     searchParams.set("page_search_query", query);
     searchParams.set("search_again", "1");
@@ -151,16 +154,26 @@ export async function searchKhanAcademy(
       });
     });
     console.log("Khan Academy results parsed successfully.");
-    console.log(results);
-    await supabase
-      .from("search_events")
-      .update({
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "khan_academy",
         status: "completed",
         payload: results,
-      })
-      .eq("id", searchEvent.data?.id);
+      },
+    ]);
   } catch (error) {
     console.error("Error fetching Khan Academy search results:", error);
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "khan_academy",
+        status: "failed",
+        payload: {},
+      },
+    ]);
   }
 
   return results; // Limit for now
@@ -174,9 +187,8 @@ export async function searchGooglePDFs(
   grade?: string | number
 ): Promise<SearchResult[]> {
   const supabase = await createClient();
-  const searchEvent = await supabase
-    .from("search_events")
-    .insert([
+  try {
+    await supabase.from("search_events").insert([
       {
         session_id: sessionId,
         user_id: userId,
@@ -184,44 +196,58 @@ export async function searchGooglePDFs(
         status: "started",
         payload: {},
       },
-    ])
-    .select()
-    .single();
+    ]);
 
-  const results = new Promise<SearchResult[]>((resolve, reject) => {
-    const query = `${topic} ${grade ? `class ${grade}` : ""} filetype:pdf`;
+    const results = await new Promise<SearchResult[]>((resolve, reject) => {
+      const query = `${topic} ${grade ? `class ${grade}` : ""} filetype:pdf`;
 
-    search.json(
-      {
-        q: query,
-        engine: "google",
-        num: 10,
-        hl: "en",
-        gl: "in",
-      },
-      (data: any) => {
-        try {
-          const results: SearchResult[] = data.organic_results
-            .filter((r: any) => r.link.endsWith(".pdf"))
-            .map((r: any) => ({
-              title: r.title,
-              link: r.link,
-              description: r.snippet,
-              type: "Worksheet",
-            }));
-          resolve(results);
-        } catch (err) {
-          reject(err);
+      search.json(
+        {
+          q: query,
+          engine: "google",
+          num: 10,
+          hl: "en",
+          gl: "in",
+        },
+        (data: any) => {
+          try {
+            const results: SearchResult[] = data.organic_results
+              .filter((r: any) => r.link.endsWith(".pdf"))
+              .map((r: any) => ({
+                title: r.title,
+                link: r.link,
+                description: r.snippet,
+                type: "Worksheet",
+              }));
+            resolve(results);
+          } catch (err) {
+            reject(err);
+          }
         }
-      }
-    );
-  });
-  await supabase
-    .from("search_events")
-    .update({
-      status: "completed",
-      payload: results,
-    })
-    .eq("id", searchEvent.data?.id);
-  return results;
+      );
+    });
+    
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "google_pdf",
+        status: "completed",
+        payload: results,
+      },
+    ]);
+    return results;
+  } catch (error) {
+    console.error("Error fetching Google PDF search results:", error);
+    await supabase.from("search_events").insert([
+      {
+        session_id: sessionId,
+        user_id: userId,
+        site: "google_pdf",
+        status: "failed",
+        payload: {},
+      },
+    ]);
+  }
+  return [];
 }

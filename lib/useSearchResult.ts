@@ -4,43 +4,44 @@ import { useEffect, useState } from "react";
 
 const supabase = createClient();
 
-type Event = {
-  created_at: string;
-  id: string;
-  payload: Record<string, any>;
-  session_id: string;
-  site: string;
-  status: string;
-  user_id: string;
+export type SearchResultType = {
+  id: number;
+  title: string;
+  description: string;
+  image: string;
+  type: string;
 };
-export function useSearchRealtime(userId: string | null, id?: string) {
-  const [results, setResults] = useState<Event[]>([]);
+
+export function useSearchResult(userId: string | null, id?: string) {
+  const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState<SearchResultType[]>([]);
 
   const sessionId = isServer() ? id : (id ?? localStorage.getItem("sessionId"));
-
   useEffect(() => {
     if (!sessionId || !userId) return;
     const fetchResults = async () => {
       const { data, error } = await supabase
-        .from("search_events")
+        .from("search_results")
         .select("*")
         .eq("session_id", sessionId)
-        .eq("user_id", userId);
+        .select()
+        .maybeSingle();
 
+      setLoading(false);
       if (error) {
         console.error("Error fetching search results:", error);
         return;
       }
-      setResults(data);
+      if (data) setResults(data.payload);
     };
     const channel = supabase
-      .channel(`search-events-${sessionId}`)
+      .channel(`search-results-${sessionId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "search_events",
+          table: "search_results",
           filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
@@ -48,7 +49,7 @@ export function useSearchRealtime(userId: string | null, id?: string) {
             payload.eventType === "INSERT" ||
             payload.eventType === "UPDATE"
           ) {
-            setResults((prevResults) => [...prevResults, payload.new as Event]);
+            setResults(payload.new.payload as SearchResultType[]);
           }
         }
       )
@@ -59,5 +60,5 @@ export function useSearchRealtime(userId: string | null, id?: string) {
     };
   }, [sessionId, userId]);
 
-  return results;
+  return { data: results, loading };
 }
