@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import chromium from "@sparticuz/chromium";
 import * as cheerio from "cheerio";
 import { existsSync } from "fs";
 import SerpApi from "google-search-results-nodejs";
@@ -17,17 +18,22 @@ export interface SearchResult {
 }
 
 const possiblePaths = [
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/tmp/chromium",
   "/usr/bin/chromium-browser",
   "/usr/bin/chromium",
   "/snap/bin/chromium",
+  "/opt/chromium",
 ];
 
 const getChromiumPath = () =>
   possiblePaths.find((path) => existsSync(path)) || null;
 
 const scrapContent = async (url: string, selector: string) => {
+  const path = getChromiumPath() || (await chromium.executablePath());
+  console.log("Chromium path:", path);
   const browser = await puppeteer.launch({
-    executablePath: getChromiumPath()!,
+    executablePath: path,
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });

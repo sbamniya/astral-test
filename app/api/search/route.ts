@@ -62,10 +62,7 @@ export async function GET(req: NextRequest) {
       const allResults = response
         .filter((res) => res.status === "fulfilled")
         .map((res) => (res as PromiseFulfilledResult<any>).value)
-        .flat()
-        .filter((res) => res.length > 0);
-
-      console.log(allResults);
+        .flat();
 
       const filtered = await filterResultsWithGPT(allResults, query, grade);
       await Promise.all([
@@ -85,6 +82,7 @@ export async function GET(req: NextRequest) {
         ]),
       ]);
     } catch (error) {
+      console.log("error");
       await supabase
         .from("search_sessions")
         .update([
